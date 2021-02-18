@@ -1,0 +1,332 @@
+---
+title: "SMA Group Project Spotify Analysis"
+author: ROSATO Alessio  BAJPAI Shruti  YANG Zhou
+date: Feb 03, 2021
+output: pdf_document
+---
+
+```{r basetable, echo=FALSE,message=FALSE, warning =FALSE}
+load('D:\\1 IESEG\\DataSet\\Spotify_repliesSentiment.Rdata')
+load('D:\\1 IESEG\\DataSet\\Spotify_retweets.Rdata')
+load('D:\\1 IESEG\\DataSet\\SpotifyOrganicSentiment.Rdata')
+load('D:\\1 IESEG\\DataSet\\SpotifySentiment.Rdata')
+load('D:\\1 IESEG\\DataSet\\statusOrganicSentiment.Rdata')
+load('D:\\1 IESEG\\DataSet\\statusRepliesSentiment.Rdata')
+load('D:\\1 IESEG\\DataSet\\statusRetweetsSentiment.Rdata')
+load('D:\\1 IESEG\\DataSet\\statusSentiment.Rdata')
+load('D:\\1 IESEG\\DataSet\\summaryOrganicSentiment.Rdata')
+load('D:\\1 IESEG\\DataSet\\summaryRepliesSentiment.Rdata')
+load('D:\\1 IESEG\\DataSet\\summaryRetweetsSentiment.Rdata')
+load('D:\\1 IESEG\\DataSet\\summarySentiment.Rdata')
+load('D:\\1 IESEG\\DataSet\\spotify_today.Rdata')
+load('D:\\1 IESEG\\DataSet\\Working\\statusWorkingOeganicSentiment.Rdata')
+load('D:\\1 IESEG\\DataSet\\Working\\statusworkingreplySentiment.Rdata')
+load('D:\\1 IESEG\\DataSet\\Working\\statusWorkingRetweetSentiment.Rdata')
+load('D:\\1 IESEG\\DataSet\\Working\\statusWorkingSentiment.Rdata')
+load('D:\\1 IESEG\\DataSet\\Working\\summaryWorkingOeganicSentiment.Rdata')
+load('D:\\1 IESEG\\DataSet\\Working\\summaryWorkingreplySentiment.Rdata')
+load('D:\\1 IESEG\\DataSet\\Working\\summaryWorkingRetweetSentiment.Rdata')
+load('D:\\1 IESEG\\DataSet\\Working\\summaryWorkingSentiment.Rdata')
+load('D:\\1 IESEG\\DataSet\\Working\\working_tweets.Rdata')
+load('D:\\1 IESEG\\DataSet\\Working\\pie_type_df.Rdata')
+load('D:\\1 IESEG\\DataSet\\Working\\pie_source_df.Rdata')
+load('D:\\1 IESEG\\DataSet\\Working\\working_tweets_organic.Rdata')
+load('D:\\1 IESEG\\DataSet\\Working\\working_retweets.Rdata')
+
+```
+
+
+```{r echo=FALSE, message=FALSE, warning =FALSE}
+for (i in c('SnowballC','slam','tm','Matrix','tidytext','dplyr','hunspell','purrr','wordcloud','RWeka','ggplot2','rtweet','httr','jsonlite')){
+  if (!require(i, character.only=TRUE)) install.packages(i, repos = "http://cran.us.r-project.org")
+  require(i, character.only=TRUE)
+}
+
+
+
+# load twitter library - the rtweet library is recommended now over twitteR
+library('rjson')
+library('jsonlite')
+
+
+# animated maps
+# to install: devtools::install_github("dgrtwo/gganimate")
+# note this required imagemagick to be installed
+library('leaflet')
+library('gganimate')
+library('lubridate')
+library('maps')
+library('ggthemes')
+
+options(stringsAsFactors = FALSE)
+```
+# Overview of the report  
+
+### 1.About Company
+Spotify is a genuine streaming media music service platform, which was officially launched in Stockholm in October 2008.  
+
+
+### 2.Project Description
+To search through Twitter API to obtain a large number of data information related to spotify (including published content, comments, sources, user information, etc.), and to classify and compare the source data through sentiment analysis and topic analysis, so as to obtain the participation and liking degree of spotify users on different emotions and topics.  
+
+
+### 3.Data Description
+spotify_today : Raw data from twitter.
+Spotify_tweets_organic : Original twitter data filtered from original data.
+Spotify_retweets : Retweet data filtered from raw data.
+Spotify_replies : reply data filtered from raw data.  
+working_tweets: Volume over time (last 3200 posts by the official account, approx. 9 months)
+
+
+### 4.Data Pre-processing
+The preprocessing of twitter text is helpful for our data analysis in the future. 
+First,We remove punctuation and numbers
+Second, convert the text to lowercase
+Third, remove stop words
+Finally, the source data is divided into Spotify_tweets_organic, Spotify_retweets and Spotify_replies  
+
+\newpage
+
+
+### 5.User distribution
+```{r echo=FALSE, message=FALSE, warning =FALSE}
+spotify_today %>% 
+  filter(!is.na(place_full_name)) %>% 
+  count(place_full_name, sort = TRUE) %>% 
+  top_n(5)
+```
+
+The above data shows the six places with the largest number of users in the dataset.According to the distribution of users, we can know which regions are more concerned about spotify's Twitter, and which regions are less concerned about spotify's Twitter. The company can modify its marketing strategy more specifically, so as to gain greater popularity and more users.
+
+\newpage
+
+### 6.Users who actively forward twitter
+```{r echo=FALSE, message=FALSE, warning =FALSE}
+#Shows who retweeted the most
+
+set.seed(1234)
+wordcloud(Spotify_retweets$retweet_screen_name, min.freq=5, scale=c(2, .5), random.order=FALSE, rot.per=0.25, 
+          colors=brewer.pal(8, "Dark2"))
+```
+
+
+### 7.Users who actively forward twitter recently
+Recently actively forwarding the data of Twitter users can help us find the recently active customers
+```{r echo=FALSE, message=FALSE, warning =FALSE}
+#Shows who retweeted the most
+
+set.seed(1234)
+wordcloud(working_retweets$retweet_screen_name, min.freq=5, scale=c(2, .5), random.order=FALSE, rot.per=0.25, 
+          colors=brewer.pal(8, "Dark2"))
+```
+Paying attention to the users (loyal users) who frequently forward the company's Twitter, their emotions on the information released by the company's Twitter are often a very important part, and keeping them in a high positive mood is an important part for the company to reduce the loss of users.
+
+### 8.Most Common Hashtags
+```{r echo=FALSE, message=FALSE, warning =FALSE}
+working_tweets_organic$hashtags <- as.character(working_tweets_organic$hashtags)
+working_tweets_organic$hashtags <- gsub("c\\(", "", working_tweets_organic$hashtags)
+set.seed(1234)
+wordcloud(working_tweets_organic$hashtags, min.freq=3, scale=c(3.5, .5), random.order=FALSE, rot.per=0.35, 
+          colors=brewer.pal(8, "Dark2"))
+```
+
+
+```{r echo=FALSE, message=FALSE, warning =FALSE}
+SpotifyOrganicSentiment$text <-  gsub("https\\S*", "", SpotifyOrganicSentiment$text)
+SpotifyOrganicSentiment$text <-  gsub("@\\S*", "", SpotifyOrganicSentiment$text) 
+SpotifyOrganicSentiment$text  <-  gsub("amp", "", SpotifyOrganicSentiment$text) 
+SpotifyOrganicSentiment$text  <-  gsub("[\r\n]", "", SpotifyOrganicSentiment$text)
+SpotifyOrganicSentiment$text  <-  gsub("[[:punct:]]", "", SpotifyOrganicSentiment$text)
+
+tweets <- SpotifyOrganicSentiment %>%
+  select(text) %>%
+  unnest_tokens(word, text)
+tweets <- tweets %>%
+  anti_join(stop_words)
+
+tweets %>% # gives you a bar chart of the most frequent words found in the tweets
+  count(word, sort = TRUE) %>%
+  top_n(15) %>%
+  mutate(word = reorder(word, n)) %>%
+  ggplot(aes(x = word, y = n)) +
+  geom_col() +
+  xlab(NULL) +
+  coord_flip() +
+  labs(y = "Count",
+       x = "Unique words",
+       title = "Most frequent words found in Spotify's tweets",
+       subtitle = "Stop words have been removed")
+```
+
+
+## Sentiment Analysis
+### Raw data Analysis
+
+
+```{r echo=FALSE, message=FALSE, warning =FALSE}
+library(ggplot2)
+library(dplyr)
+summarySentiment<-ungroup(summarySentiment)
+summarySentiment<-mutate(summarySentiment,word = reorder(word, n))
+ggplot(summarySentiment,aes(word, n, fill = sentiment)) +
+  geom_col(show.legend = FALSE) +
+  facet_wrap(~sentiment, scales = "free_y") +
+  labs(y = "Data sentiment",
+       x = NULL) +
+  coord_flip()
+summaryWorkingSentiment<-ungroup(summaryWorkingSentiment)
+summaryWorkingSentiment<-mutate(summaryWorkingSentiment,word = reorder(word, n))
+ggplot(summaryWorkingSentiment,aes(word, n, fill = sentiment)) +
+  geom_col(show.legend = FALSE) +
+  facet_wrap(~sentiment, scales = "free_y") +
+  labs(y = "Recent data sentiment",
+       x = NULL) +
+  coord_flip()
+
+```
+
+```{r echo=FALSE, message=FALSE, warning =FALSE}
+statusSentiment_score<-mean(statusSentiment$sentiment)
+paste("Mean sentiment score =",statusSentiment_score)
+statusWorkingSentiment_score<-mean(statusWorkingSentiment$sentiment)
+paste("Mean Working sentiment score =",statusWorkingSentiment_score)
+```
+
+As can be seen from the chart, the average sentiment score of recent twitter data is higher than that of a large number of Spotify company we have chosen.
+
+
+
+
+## Original twitter data
+```{r echo=FALSE, message=FALSE, warning =FALSE}
+library(ggplot2)
+library(dplyr)
+summaryOrganicSentiment<-ungroup(summaryOrganicSentiment)
+summaryOrganicSentiment<-mutate(summaryOrganicSentiment,word = reorder(word, n))
+ggplot(summaryOrganicSentiment,aes(word, n, fill = sentiment)) +
+  geom_col(show.legend = FALSE) +
+  facet_wrap(~sentiment, scales = "free_y") +
+  labs(y = "Data sentiment",
+       x = NULL) +
+  coord_flip()
+summaryWorkingOeganicSentiment<-ungroup(summaryWorkingOeganicSentiment)
+summaryWorkingOeganicSentiment<-mutate(summaryWorkingOeganicSentiment,word = reorder(word, n))
+ggplot(summaryWorkingOeganicSentiment,aes(word, n, fill = sentiment)) +
+  geom_col(show.legend = FALSE) +
+  facet_wrap(~sentiment, scales = "free_y") +
+  labs(y = "Recent data sentiment",
+       x = NULL) +
+  coord_flip()
+```
+```{r echo=FALSE, message=FALSE, warning =FALSE}
+statusOrganicSentiment_score<-mean(statusOrganicSentiment$sentiment)
+paste("Mean Original sentiment score =",statusOrganicSentiment_score)
+statusWorkingOeganicSentiment_score<-mean(statusWorkingOeganicSentiment$sentiment)
+paste("Mean Working Original sentiment score =",statusWorkingOeganicSentiment_score)
+```
+For the original twitter data, the average emotional score of recent data is much higher than that of a large number of spotify companies we have chosen.
+
+## reply data
+```{r echo=FALSE, message=FALSE, warning =FALSE}
+library(ggplot2)
+library(dplyr)
+summaryRepliesSentiment<-ungroup(summaryRepliesSentiment)
+summaryRepliesSentiment<-mutate(summaryRepliesSentiment,word = reorder(word, n))
+ggplot(summaryRepliesSentiment,aes(word, n, fill = sentiment)) +
+  geom_col(show.legend = FALSE) +
+  facet_wrap(~sentiment, scales = "free_y") +
+  labs(y = "Data sentiment",
+       x = NULL) +
+  coord_flip()
+summaryWorkingreplySentiment<-ungroup(summaryWorkingreplySentiment)
+summaryWorkingreplySentiment<-mutate(summaryWorkingreplySentiment,word = reorder(word, n))
+ggplot(summaryWorkingreplySentiment,aes(word, n, fill = sentiment)) +
+  geom_col(show.legend = FALSE) +
+  facet_wrap(~sentiment, scales = "free_y") +
+  labs(y = "Recent data sentiment",
+       x = NULL) +
+  coord_flip()
+```
+
+```{r echo=FALSE, message=FALSE, warning =FALSE}
+statusRepliesSentiment_score<-mean(statusRepliesSentiment$sentiment)
+paste("Mean reply sentiment score =",statusRepliesSentiment_score)
+statusworkingreplySentiment_score<-mean(statusworkingreplySentiment$sentiment)
+paste("Mean Working reply sentiment score =",statusworkingreplySentiment_score)
+```
+
+However, in terms of twitter response data, the average score of recent data is far lower than that of a large number of spotify companies, which indicates that many negative emotions have been added in recent user responses.
+
+## Retweet data
+```{r echo=FALSE, message=FALSE, warning =FALSE}
+library(ggplot2)
+library(dplyr)
+summaryRetweetsSentiment<-ungroup(summaryRetweetsSentiment)
+summaryRetweetsSentiment<-mutate(summaryRetweetsSentiment,word = reorder(word, n))
+ggplot(summaryRetweetsSentiment,aes(word, n, fill = sentiment)) +
+  geom_col(show.legend = FALSE) +
+  facet_wrap(~sentiment, scales = "free_y") +
+  labs(y = "Data sentiment",
+       x = NULL) +
+  coord_flip()
+summaryWorkingRetweetSentiment<-ungroup(summaryWorkingRetweetSentiment)
+summaryWorkingRetweetSentiment<-mutate(summaryWorkingRetweetSentiment,word = reorder(word, n))
+ggplot(summaryWorkingRetweetSentiment,aes(word, n, fill = sentiment)) +
+  geom_col(show.legend = FALSE) +
+  facet_wrap(~sentiment, scales = "free_y") +
+  labs(y = "Recent data sentiment",
+       x = NULL) +
+  coord_flip()
+```
+
+```{r echo=FALSE, message=FALSE, warning =FALSE}
+statusRetweetsSentiment_score<-mean(statusRetweetsSentiment$sentiment)
+paste("Mean Retweets sentiment score =",statusRetweetsSentiment_score)
+statusWorkingRetweetSentiment_score<-mean(statusWorkingRetweetSentiment$sentiment)
+paste("Mean Working Retweets sentiment score =",statusWorkingRetweetSentiment_score)
+```
+In terms of twitter forwarding data, the average emotional score of recent data is higher than that of a large number of spotify company data we selected.
+
+\newpage
+
+
+```{r echo=FALSE, message=FALSE, warning =FALSE}
+colnames(working_tweets)[colnames(working_tweets)=="screen_name"] <- "Twitter_Account"
+ts_plot(dplyr::group_by(working_tweets, Twitter_Account), "month") +
+  ggplot2::theme_minimal() +
+  ggplot2::theme(plot.title = ggplot2::element_text(face = "bold")) +
+  ggplot2::theme(legend.position=c(0.9,0.9))+
+  ggplot2::labs(
+    x = NULL, y = NULL,
+    title = "Frequency of Tweets from Spotify",
+    subtitle = "Tweet counts aggregated by month",
+    caption = "\nSource: Data collected from Twitter's REST API via rtweet"
+  )
+
+```
+\newpage
+```{r  echo=FALSE, message=FALSE, warning =FALSE}
+spotify_todaySentimentAnalysis<-spotify_today%>%count(reply_to_user_id != "NA")
+spotify_todayState<-c("reply","no reply")
+spotify_todayTotal_number<-c(33526,161030)
+spotify_todaypercentage<-paste(round(100 * spotify_todayTotal_number / sum(spotify_todayTotal_number),2),"%")
+pie(spotify_todayTotal_number, labels=spotify_todaypercentage, main="Response rate", col=terrain.colors(length(spotify_todayTotal_number)))
+legend("topright",spotify_todayState, cex=0.8, fill=terrain.colors(length(spotify_todayTotal_number)))
+paste("Twitter response rate  =",round(100 * 33526 / sum(spotify_todayTotal_number),2),"%")
+```
+\newpage
+```{r  echo=FALSE, message=FALSE, warning =FALSE}
+working_tweetsSentimentAnalysis<-working_tweets%>%count(reply_to_user_id != "NA")
+working_tweetsState<-c("reply","no reply")
+working_tweetsTotal_number<-c(2247,953)
+working_tweetspercentage<-paste(round(100 * working_tweetsTotal_number / sum(working_tweetsTotal_number),2),"%")
+pie(working_tweetsTotal_number, labels=working_tweetspercentage, main="Response rate", col=terrain.colors(length(working_tweetsTotal_number)))
+legend("topright",working_tweetsState, cex=0.8, fill=terrain.colors(length(working_tweetsTotal_number)))
+paste("Twitter response rate in the past nine months  =",round(100 * 2247 / sum(working_tweetsTotal_number),2),"%")
+```
+From the comparison of the two pie charts, we can clearly see that the response rate in the last nine months or so has greatly improved compared with the average.
+
+
+
+
+
